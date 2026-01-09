@@ -18,7 +18,7 @@ public class MappingProfile : Profile
 
         // 3. Geografía - Municipios
         CreateMap<Municipio, MunicipioResponseDto>()
-            // CORREGIDO: Ahora sacamos el nombre desde la navegación "Departamento"
+           
             .ForMember(dest => dest.DepartamentoNombre, opt => opt.MapFrom(src => src.Departamento != null ? src.Departamento.Nombre : "Sin Depto"));
 
         // 4. Empresas

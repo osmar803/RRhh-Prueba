@@ -11,7 +11,7 @@ public class AppDbContextFactory : IDesignTimeDbContextFactory<AppDbContext>
     {
         var builder = new DbContextOptionsBuilder<AppDbContext>();
         
-        // CORRECCIÓN: Usar SQLite con el mismo nombre de archivo que en Program.cs
+        //  Usar SQLite con el mismo nombre de archivo que en Program.cs
         // Esto permite que las migraciones se generen correctamente para el formato de SQLite
         builder.UseSqlite("Data Source=RecursosHumanos.db");
 

@@ -17,5 +17,5 @@ public record MunicipioResponseDto(
     Guid Id, 
     string Nombre, 
     Guid DepartamentoId, 
-    string DepartamentoNombre // <--- ¡Esta es la clave! Queremos ver el nombre, no solo el ID
+    string DepartamentoNombre 
 );

@@ -27,7 +27,6 @@ public class DepartamentoRepository : IDepartamentoRepository
             .ToListAsync();
     }
 
-    // --- AQUÍ ESTÁ EL CAMBIO CLAVE ---
     public async Task<List<Departamento>> ObtenerTodosAsync()
     {
         return await _context.Departamentos

@@ -8,7 +8,7 @@ public class Departamento
     public string Nombre { get; private set; }
     public Guid PaisId { get; private set; }
 
-    // --- AGREGADO: Propiedad de Navegación ---
+
     // Esto permite que el repositorio haga .Include(d => d.Pais)
     public virtual Pais? Pais { get; private set; } 
 

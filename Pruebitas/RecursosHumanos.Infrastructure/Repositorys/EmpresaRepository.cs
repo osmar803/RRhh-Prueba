@@ -28,13 +28,13 @@ public class EmpresaRepository : IEmpresaRepository
         return await _context.Empresas.FindAsync(id);
     }
 
-    // --- ESTE ES EL MÉTODO QUE TE FALTABA ---
+    
     public async Task<Empresa?> ObtenerPorNitAsync(string nit)
     {
         return await _context.Empresas
             .FirstOrDefaultAsync(e => e.Nit == nit);
     }
-    // ----------------------------------------
+  
 
     public async Task AgregarAsync(Empresa empresa)
     {

@@ -33,7 +33,7 @@ public class Empresa
         CambiarMunicipio(municipioId);
     }
 
-    // ... (Tus métodos de validación existentes: CambiarNit, CambiarRazonSocial, etc.) ...
+   
     
     public void CambiarNit(string nit) { 
         if(string.IsNullOrWhiteSpace(nit)) throw new ReglaNegocioException("NIT obligatorio");
