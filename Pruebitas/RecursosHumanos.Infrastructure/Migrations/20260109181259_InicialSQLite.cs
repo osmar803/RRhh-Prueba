@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace RecursosHumanos.Infrastructure.Migrations
 {
     /// <inheritdoc />
-    public partial class Inicial : Migration
+    public partial class InicialSQLite : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -15,11 +15,11 @@ namespace RecursosHumanos.Infrastructure.Migrations
                 name: "Colaboradores",
                 columns: table => new
                 {
-                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    NombreCompleto = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: false),
-                    Edad = table.Column<int>(type: "int", nullable: false),
-                    Telefono = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    CorreoElectronico = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false)
+                    Id = table.Column<Guid>(type: "TEXT", nullable: false),
+                    NombreCompleto = table.Column<string>(type: "TEXT", maxLength: 200, nullable: false),
+                    Edad = table.Column<int>(type: "INTEGER", nullable: false),
+                    Telefono = table.Column<string>(type: "TEXT", nullable: false),
+                    CorreoElectronico = table.Column<string>(type: "TEXT", maxLength: 100, nullable: false)
                 },
                 constraints: table =>
                 {
@@ -30,8 +30,8 @@ namespace RecursosHumanos.Infrastructure.Migrations
                 name: "Paises",
                 columns: table => new
                 {
-                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    Nombre = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false)
+                    Id = table.Column<Guid>(type: "TEXT", nullable: false),
+                    Nombre = table.Column<string>(type: "TEXT", maxLength: 100, nullable: false)
                 },
                 constraints: table =>
                 {
@@ -42,9 +42,9 @@ namespace RecursosHumanos.Infrastructure.Migrations
                 name: "Departamentos",
                 columns: table => new
                 {
-                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    Nombre = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
-                    PaisId = table.Column<Guid>(type: "uniqueidentifier", nullable: false)
+                    Id = table.Column<Guid>(type: "TEXT", nullable: false),
+                    Nombre = table.Column<string>(type: "TEXT", maxLength: 100, nullable: false),
+                    PaisId = table.Column<Guid>(type: "TEXT", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -54,16 +54,16 @@ namespace RecursosHumanos.Infrastructure.Migrations
                         column: x => x.PaisId,
                         principalTable: "Paises",
                         principalColumn: "Id",
-                        onDelete: ReferentialAction.Restrict);
+                        onDelete: ReferentialAction.Cascade);
                 });
 
             migrationBuilder.CreateTable(
                 name: "Municipios",
                 columns: table => new
                 {
-                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    Nombre = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
-                    DepartamentoId = table.Column<Guid>(type: "uniqueidentifier", nullable: false)
+                    Id = table.Column<Guid>(type: "TEXT", nullable: false),
+                    Nombre = table.Column<string>(type: "TEXT", maxLength: 100, nullable: false),
+                    DepartamentoId = table.Column<Guid>(type: "TEXT", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -73,20 +73,20 @@ namespace RecursosHumanos.Infrastructure.Migrations
                         column: x => x.DepartamentoId,
                         principalTable: "Departamentos",
                         principalColumn: "Id",
-                        onDelete: ReferentialAction.Restrict);
+                        onDelete: ReferentialAction.Cascade);
                 });
 
             migrationBuilder.CreateTable(
                 name: "Empresas",
                 columns: table => new
                 {
-                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    Nit = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: false),
-                    RazonSocial = table.Column<string>(type: "nvarchar(150)", maxLength: 150, nullable: false),
-                    NombreComercial = table.Column<string>(type: "nvarchar(150)", maxLength: 150, nullable: false),
-                    Telefono = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    CorreoElectronico = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    MunicipioId = table.Column<Guid>(type: "uniqueidentifier", nullable: false)
+                    Id = table.Column<Guid>(type: "TEXT", nullable: false),
+                    Nit = table.Column<string>(type: "TEXT", maxLength: 20, nullable: false),
+                    RazonSocial = table.Column<string>(type: "TEXT", maxLength: 150, nullable: false),
+                    NombreComercial = table.Column<string>(type: "TEXT", maxLength: 150, nullable: false),
+                    Telefono = table.Column<string>(type: "TEXT", nullable: false),
+                    CorreoElectronico = table.Column<string>(type: "TEXT", nullable: false),
+                    MunicipioId = table.Column<Guid>(type: "TEXT", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -103,8 +103,8 @@ namespace RecursosHumanos.Infrastructure.Migrations
                 name: "ColaboradoresEmpresas",
                 columns: table => new
                 {
-                    ColaboradorId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    EmpresaId = table.Column<Guid>(type: "uniqueidentifier", nullable: false)
+                    ColaboradorId = table.Column<Guid>(type: "TEXT", nullable: false),
+                    EmpresaId = table.Column<Guid>(type: "TEXT", nullable: false)
                 },
                 constraints: table =>
                 {

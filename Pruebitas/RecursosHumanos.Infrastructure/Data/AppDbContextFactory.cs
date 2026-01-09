@@ -1,6 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
-using Microsoft.Extensions.Configuration; // <--- Importante
+using Microsoft.Extensions.Configuration;
 using System.IO;
 
 namespace RecursosHumanos.Infrastructure.Data;
@@ -9,19 +9,11 @@ public class AppDbContextFactory : IDesignTimeDbContextFactory<AppDbContext>
 {
     public AppDbContext CreateDbContext(string[] args)
     {
-        // Construir la configuración para leer el appsettings.json
-        // Nota: Asumimos que el archivo está en la carpeta de salida del proyecto ejecutable
-        IConfigurationRoot configuration = new ConfigurationBuilder()
-            .SetBasePath(Directory.GetCurrentDirectory())
-            .AddJsonFile("appsettings.json", optional: false) // Debe existir
-            .Build();
-
         var builder = new DbContextOptionsBuilder<AppDbContext>();
         
-        // Leer la cadena
-        var connectionString = configuration.GetConnectionString("DefaultConnection");
-
-        builder.UseSqlServer(connectionString);
+        // CORRECCIÓN: Usar SQLite con el mismo nombre de archivo que en Program.cs
+        // Esto permite que las migraciones se generen correctamente para el formato de SQLite
+        builder.UseSqlite("Data Source=RecursosHumanos.db");
 
         return new AppDbContext(builder.Options);
     }
