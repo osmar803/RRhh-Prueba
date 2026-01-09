@@ -1,4 +1,5 @@
 using RecursosHumanos.Domain.Exceptions;
+using System.ComponentModel.DataAnnotations.Schema; // Necesario para ForeignKey (opcional pero recomendado)
 
 namespace RecursosHumanos.Domain;
 
@@ -7,6 +8,10 @@ public class Municipio
     public Guid Id { get; private set; }
     public string Nombre { get; private set; }
     public Guid DepartamentoId { get; private set; }
+
+    // --- ¡ESTO ES LO QUE FALTABA! ---
+    public virtual Departamento? Departamento { get; private set; }
+    // --------------------------------
 
     private Municipio() { }
 

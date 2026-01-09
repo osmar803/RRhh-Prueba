@@ -28,11 +28,15 @@ public class DepartamentoService
     return _mapper.Map<List<DepartamentoResponseDto>>(lista);
 }
     public async Task<Guid> CrearAsync(DepartamentoCreateDto dto)
-    {
-        var nuevo = new Departamento(dto.Nombre, dto.PaisId);
-        await _repository.AgregarAsync(nuevo);
-        return nuevo.Id;
-    }
+{
+    // Verifica que dto.PaisId no venga vacío
+    if (dto.PaisId == Guid.Empty) 
+        throw new ArgumentException("El ID del país no puede estar vacío.");
+
+    var nuevo = new Departamento(dto.Nombre, dto.PaisId);
+    await _repository.AgregarAsync(nuevo);
+    return nuevo.Id;
+}
 
     public async Task ActualizarAsync(DepartamentoUpdateDto dto)
     {

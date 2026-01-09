@@ -14,23 +14,27 @@ public class EmpresaRepository : IEmpresaRepository
         _context = context;
     }
 
-    public async Task<Empresa?> ObtenerPorIdAsync(Guid id)
-    {
-        return await _context.Empresas
-            .Include(e => e.Colaboradores) // Incluimos la relación
-            .FirstOrDefaultAsync(e => e.Id == id);
-    }
-
-    public async Task<Empresa?> ObtenerPorNitAsync(string nit)
-    {
-        return await _context.Empresas.FirstOrDefaultAsync(e => e.Nit == nit);
-    }
-
     public async Task<List<Empresa>> ObtenerTodosAsync()
     {
-        // Opcionalmente podrías incluir Municipio y Departamento aquí si los necesitas para mostrar en la grilla
-        return await _context.Empresas.OrderBy(e => e.RazonSocial).ToListAsync();
+        // Incluimos Municipio para que se vea el nombre en la tabla
+        return await _context.Empresas
+            .Include(e => e.Municipio) 
+            .OrderBy(e => e.NombreComercial)
+            .ToListAsync();
     }
+
+    public async Task<Empresa?> ObtenerPorIdAsync(Guid id)
+    {
+        return await _context.Empresas.FindAsync(id);
+    }
+
+    // --- ESTE ES EL MÉTODO QUE TE FALTABA ---
+    public async Task<Empresa?> ObtenerPorNitAsync(string nit)
+    {
+        return await _context.Empresas
+            .FirstOrDefaultAsync(e => e.Nit == nit);
+    }
+    // ----------------------------------------
 
     public async Task AgregarAsync(Empresa empresa)
     {
@@ -46,10 +50,10 @@ public class EmpresaRepository : IEmpresaRepository
 
     public async Task EliminarAsync(Guid id)
     {
-        var empresa = await ObtenerPorIdAsync(id);
-        if (empresa != null)
+        var entidad = await ObtenerPorIdAsync(id);
+        if (entidad != null)
         {
-            _context.Empresas.Remove(empresa);
+            _context.Empresas.Remove(entidad);
             await _context.SaveChangesAsync();
         }
     }

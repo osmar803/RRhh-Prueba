@@ -27,11 +27,13 @@ public class MunicipioRepository : IMunicipioRepository
             .ToListAsync();
     }
 
-    public async Task<List<Municipio>> ObtenerTodosAsync()
+  public async Task<List<Municipio>> ObtenerTodosAsync()
     {
-        return await _context.Municipios.OrderBy(m => m.Nombre).ToListAsync();
+        return await _context.Municipios
+            .Include(m => m.Departamento) // <--- ESTO ES VITAL
+            .OrderBy(m => m.Nombre)
+            .ToListAsync();
     }
-
     public async Task AgregarAsync(Municipio municipio)
     {
         await _context.Municipios.AddAsync(municipio);

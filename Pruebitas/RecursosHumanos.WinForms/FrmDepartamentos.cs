@@ -18,50 +18,31 @@ public class FrmDepartamentos : Form
     {
         _service = service;
         _paisService = paisService;
-        ConfigurarUI();
+        
+        // 1. Dibujamos los controles primero
+        InitializeComponentManual(); 
+        
+        // 2. Nos suscribimos al evento Load para cargar datos de forma segura
+        this.Load += async (s, e) => await CargarDatosIniciales();
     }
 
-    private async void ConfigurarUI()
+    private void InitializeComponentManual()
     {
         this.Text = "Gestión de Departamentos";
         this.Size = new Size(600, 450);
-        this.StartPosition = FormStartPosition.CenterScreen; // Centrado para que se vea mejor
+        this.StartPosition = FormStartPosition.CenterScreen;
 
-        // --- 1. COMBOBOX DE PAÍSES ---
         var lblPais = new Label { Text = "Seleccione País:", Location = new Point(20, 20), AutoSize = true };
         cmbPaises = new ComboBox { Location = new Point(20, 45), Width = 200, DropDownStyle = ComboBoxStyle.DropDownList };
         
-        try 
-        {
-            // Cargar Paises al combo
-            var paises = await _paisService.ObtenerTodosAsync();
-            
-            // PROTECCIÓN: Validamos que existan datos antes de asignarlos
-            if (paises != null && paises.Count > 0)
-            {
-                cmbPaises.DataSource = paises;
-                cmbPaises.DisplayMember = "Nombre";
-                cmbPaises.ValueMember = "Id";
-                cmbPaises.SelectedIndex = 0; // Seleccionar el primero por defecto
-            }
-            else
-            {
-                // Si no hay países, mostramos una alerta visual y deshabilitamos el combo
-                MessageBox.Show("No se encontraron países. Por favor registre uno primero en la opción 'Gestión de Países'.", "Advertencia");
-                cmbPaises.Enabled = false;
-            }
-        }
-        catch (Exception ex)
-        {
-            MessageBox.Show("Error al cargar la lista de países: " + ex.Message);
-        }
-
-        // --- 2. RESTO DE CONTROLES ---
         var lblNom = new Label { Text = "Nombre Depto:", Location = new Point(240, 20), AutoSize = true };
         txtNombre = new TextBox { Location = new Point(240, 45), Width = 200 };
 
         var btnGuardar = new Button { Text = "Guardar", Location = new Point(460, 43), Width = 100 };
-        btnGuardar.Click += async (s, e) => await Guardar();
+        // Validamos antes de llamar a guardar
+        btnGuardar.Click += async (s, e) => {
+            if (ValidarFormulario()) await Guardar();
+        };
 
         var btnEliminar = new Button { Text = "Eliminar", Location = new Point(460, 75), Width = 100 };
         btnEliminar.Click += async (s, e) => await Eliminar();
@@ -72,52 +53,82 @@ public class FrmDepartamentos : Form
         this.Controls.Add(lblNom); this.Controls.Add(txtNombre);
         this.Controls.Add(btnGuardar); this.Controls.Add(btnEliminar);
         this.Controls.Add(dgvDatos);
-
-        await CargarDatos();
     }
 
-    private async Task CargarDatos()
+    private async Task CargarDatosIniciales()
     {
         try 
         {
-            var datos = await _service.ObtenerTodosAsync();
-            if (datos != null) dgvDatos.DataSource = datos;
+            // 1. Cargar Países
+            var paises = await _paisService.ObtenerTodosAsync();
+            if (paises != null && paises.Count > 0)
+            {
+                cmbPaises.DataSource = paises;
+                cmbPaises.DisplayMember = "Nombre";
+                cmbPaises.ValueMember = "Id";
+                cmbPaises.SelectedIndex = 0;
+            }
+            else
+            {
+                MessageBox.Show("No hay países registrados. Primero agregue un país.");
+                this.Close(); // Cerramos si no se puede usar
+                return;
+            }
+
+            // 2. Cargar Grilla
+            await RecargarGrilla();
         }
         catch (Exception ex)
         {
-            // Error silencioso en la carga de la grilla para no molestar, o puedes poner MessageBox
-            Console.WriteLine(ex.Message);
+            MessageBox.Show($"Error al cargar datos: {ex.Message}");
         }
+    }
+
+    private async Task RecargarGrilla()
+    {
+        var lista = await _service.ObtenerTodosAsync();
+        dgvDatos.DataSource = lista;
+    }
+
+    private bool ValidarFormulario()
+    {
+        if (cmbPaises.SelectedValue == null)
+        {
+            MessageBox.Show("Error: No se ha seleccionado ningún país.");
+            return false;
+        }
+        if (string.IsNullOrWhiteSpace(txtNombre.Text))
+        {
+            MessageBox.Show("El nombre es obligatorio.");
+            return false;
+        }
+        return true;
     }
 
     private async Task Guardar()
     {
-        // Validación extra por si el combo está vacío
-        if (cmbPaises.SelectedValue == null) 
+        try 
         {
-            MessageBox.Show("Debe seleccionar un país válido.");
-            return;
-        }
-        if (string.IsNullOrWhiteSpace(txtNombre.Text)) 
-        {
-            MessageBox.Show("Debe escribir un nombre.");
-            return;
-        }
-
-        try {
-            await _service.CrearAsync(new DepartamentoCreateDto(txtNombre.Text, (Guid)cmbPaises.SelectedValue));
+            var nuevoDto = new DepartamentoCreateDto(txtNombre.Text, (Guid)cmbPaises.SelectedValue);
+            await _service.CrearAsync(nuevoDto);
+            
+            MessageBox.Show("Departamento guardado correctamente.");
             txtNombre.Text = "";
-            await CargarDatos();
-            MessageBox.Show("Departamento Guardado");
-        } catch (Exception ex) { MessageBox.Show(ex.Message); }
+            await RecargarGrilla();
+        } 
+        catch (Exception ex) 
+        { 
+            MessageBox.Show($"Error al guardar: {ex.Message}"); 
+        }
     }
 
     private async Task Eliminar()
     {
         if (dgvDatos.SelectedRows.Count == 0) return;
         try {
-            await _service.EliminarAsync((Guid)dgvDatos.SelectedRows[0].Cells["Id"].Value);
-            await CargarDatos();
+            var id = (Guid)dgvDatos.SelectedRows[0].Cells["Id"].Value;
+            await _service.EliminarAsync(id);
+            await RecargarGrilla();
         } catch (Exception ex) { MessageBox.Show(ex.Message); }
     }
 }

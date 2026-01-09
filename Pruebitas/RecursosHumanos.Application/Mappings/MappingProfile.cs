@@ -8,21 +8,25 @@ public class MappingProfile : Profile
 {
     public MappingProfile()
     {
-        // Geografía
+        // 1. Geografía - Paises
         CreateMap<Pais, PaisResponseDto>();
         
+        // 2. Geografía - Departamentos
         CreateMap<Departamento, DepartamentoResponseDto>()
-            .ForMember(dest => dest.PaisNombre, opt => opt.MapFrom(src => src.Id)); 
-            // Nota: Si quieres el nombre real del país aquí, necesitarías incluir la navegación en el Repositorio 
-            // o cargar el nombre por separado. Por ahora lo dejamos simple.
+            // CORREGIDO: Ahora sacamos el nombre desde la navegación "Pais"
+            .ForMember(dest => dest.PaisNombre, opt => opt.MapFrom(src => src.Pais != null ? src.Pais.Nombre : "Sin País")); 
 
+        // 3. Geografía - Municipios
         CreateMap<Municipio, MunicipioResponseDto>()
-    .ForMember(dest => dest.DepartamentoNombre, opt => opt.MapFrom(src => src.DepartamentoId));
+            // CORREGIDO: Ahora sacamos el nombre desde la navegación "Departamento"
+            .ForMember(dest => dest.DepartamentoNombre, opt => opt.MapFrom(src => src.Departamento != null ? src.Departamento.Nombre : "Sin Depto"));
 
-        // Empresa
-        CreateMap<Empresa, EmpresaResponseDto>();
+        // 4. Empresas
+        // Dentro del constructor de MappingProfile:
 
-        // Colaborador
+CreateMap<Empresa, EmpresaResponseDto>()
+    .ForMember(dest => dest.MunicipioNombre, opt => opt.MapFrom(src => src.Municipio != null ? src.Municipio.Nombre : "Sin Municipio"));
+        // 5. Colaboradores
         CreateMap<Colaborador, ColaboradorResponseDto>();
     }
 }

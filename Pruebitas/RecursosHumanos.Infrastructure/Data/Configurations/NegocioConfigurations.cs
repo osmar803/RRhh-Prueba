@@ -13,13 +13,13 @@ public class EmpresaConfiguration : IEntityTypeConfiguration<Empresa>
         builder.Property(e => e.RazonSocial).IsRequired().HasMaxLength(150);
         builder.Property(e => e.NombreComercial).IsRequired().HasMaxLength(150);
         
-        // Relación: Empresa pertenece a un Municipio
-        builder.HasOne<Municipio>()
+        // CORREGIDO: Usamos (e => e.Municipio) en lugar de <Municipio>
+        builder.HasOne(e => e.Municipio)
             .WithMany()
             .HasForeignKey(e => e.MunicipioId)
             .OnDelete(DeleteBehavior.Restrict);
 
-        // Configuración para la lista de Colaboradores (navegación)
+        // Configuración para la lista de Colaboradores
         builder.HasMany(e => e.Colaboradores)
             .WithOne()
             .HasForeignKey(ce => ce.EmpresaId);
@@ -34,7 +34,6 @@ public class ColaboradorConfiguration : IEntityTypeConfiguration<Colaborador>
         builder.Property(c => c.NombreCompleto).IsRequired().HasMaxLength(200);
         builder.Property(c => c.CorreoElectronico).IsRequired().HasMaxLength(100);
         
-        // Configuración para la lista de Empresas (navegación)
         builder.HasMany(c => c.Empresas)
             .WithOne()
             .HasForeignKey(ce => ce.ColaboradorId);
@@ -45,7 +44,6 @@ public class ColaboradorEmpresaConfiguration : IEntityTypeConfiguration<Colabora
 {
     public void Configure(EntityTypeBuilder<ColaboradorEmpresa> builder)
     {
-        // Llave compuesta (Muchos a Muchos)
         builder.HasKey(ce => new { ce.ColaboradorId, ce.EmpresaId });
     }
 }

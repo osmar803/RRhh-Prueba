@@ -20,8 +20,8 @@ public class DepartamentoConfiguration : IEntityTypeConfiguration<Departamento>
         builder.HasKey(d => d.Id);
         builder.Property(d => d.Nombre).IsRequired().HasMaxLength(100);
 
-        // Relación: Un departamento tiene un País
-        builder.HasOne<Pais>()
+        // CORREGIDO: Usamos (d => d.Pais) en lugar de <Pais>
+        builder.HasOne(d => d.Pais) 
             .WithMany()
             .HasForeignKey(d => d.PaisId)
             .OnDelete(DeleteBehavior.Restrict);
@@ -35,8 +35,8 @@ public class MunicipioConfiguration : IEntityTypeConfiguration<Municipio>
         builder.HasKey(m => m.Id);
         builder.Property(m => m.Nombre).IsRequired().HasMaxLength(100);
 
-        // Relación: Un municipio tiene un Departamento
-        builder.HasOne<Departamento>()
+        // CORREGIDO: Usamos (m => m.Departamento) en lugar de <Departamento>
+        builder.HasOne(m => m.Departamento)
             .WithMany()
             .HasForeignKey(m => m.DepartamentoId)
             .OnDelete(DeleteBehavior.Restrict);
