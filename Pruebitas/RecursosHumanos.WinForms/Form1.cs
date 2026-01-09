@@ -1,84 +1,109 @@
-using System.Drawing; // Necesario para colores y tamaños
-using System.Windows.Forms; // Necesario para crear ventanas
-using Microsoft.Extensions.DependencyInjection; // Necesario para abrir otros formularios
+using System.Drawing;
+using System.Windows.Forms;
+using Microsoft.Extensions.DependencyInjection;
+using RecursosHumanos.WinForms.Helpers; // Importar el helper
 
 namespace RecursosHumanos.WinForms;
 
 public partial class Form1 : Form
 {
-    // Declaramos los controles (Botones y etiquetas)
-    private Label lblTitulo;
-    private Button btnPaises;
-    private Button btnDeptos;
-    private Button btnMunicipios;
-    private Button btnEmpresas;
-    private Button btnColaboradores;
+    private Panel panelMenu;
+    private Panel panelLogo;
+    private Label lblBienvenida;
 
     public Form1()
     {
-        // Configuramos la ventana principal
-        this.Text = "Sistema de RRHH";
-        this.Size = new Size(400, 500); // Tamaño de la ventana: Ancho 400, Alto 500
-        this.StartPosition = FormStartPosition.CenterScreen; // Que aparezca en el centro
+        this.Text = "Sistema de RRHH - Inicio";
+        this.Size = new Size(900, 600); // Ventana más grande
+        this.StartPosition = FormStartPosition.CenterScreen;
+        this.BackColor = ThemeHelper.BackgroundColor; // Fondo gris claro
 
-        InitializeComponentsPersonalizado();
+        InitializeComponentsModerno();
     }
 
-    private void InitializeComponentsPersonalizado()
+    private void InitializeComponentsModerno()
     {
-        // 1. Título
-        lblTitulo = new Label();
-        lblTitulo.Text = "Menú Principal";
-        lblTitulo.Font = new Font("Arial", 16, FontStyle.Bold);
-        lblTitulo.AutoSize = true;
-        lblTitulo.Location = new Point(100, 30); // Posición X, Y
-        this.Controls.Add(lblTitulo);
+        // 1. Panel Lateral (Menú)
+        panelMenu = new Panel();
+        panelMenu.Dock = DockStyle.Left;
+        panelMenu.Width = 220;
+        panelMenu.BackColor = ThemeHelper.PrimaryColor;
+        this.Controls.Add(panelMenu);
 
-        // 2. Botón Países
-        btnPaises = CrearBoton("Gestión de Países", 80);
-        btnPaises.Click += (s, e) => AbrirFormulario<FrmPaises>();
+        // 2. Panel Logo (Parte superior del menú)
+        panelLogo = new Panel();
+        panelLogo.Dock = DockStyle.Top;
+        panelLogo.Height = 80;
+        panelLogo.BackColor = Color.FromArgb(39, 39, 58); // Un poco más oscuro
+        
+        var lblTitulo = new Label();
+        lblTitulo.Text = "RRHH\nSystem";
+        lblTitulo.ForeColor = Color.White;
+        lblTitulo.Font = new Font("Segoe UI", 14F, FontStyle.Bold);
+        lblTitulo.TextAlign = ContentAlignment.MiddleCenter;
+        lblTitulo.Dock = DockStyle.Fill;
+        panelLogo.Controls.Add(lblTitulo);
+        panelMenu.Controls.Add(panelLogo);
 
-        // 3. Botón Departamentos
-        btnDeptos = CrearBoton("Gestión de Departamentos", 140);
-        btnDeptos.Click += (s, e) => AbrirFormulario<FrmDepartamentos>();
+        // 3. Botones del Menú (Usando Dock Top para apilarlos)
+        // Nota: Los agregamos en orden inverso porque Dock=Top empuja hacia abajo
+        AgregarBotonMenu("Colaboradores", () => AbrirFormulario<FrmColaboradores>());
+        AgregarBotonMenu("Empresas", () => AbrirFormulario<FrmEmpresas>());
+        AgregarBotonMenu("Municipios", () => AbrirFormulario<FrmMunicipios>());
+        AgregarBotonMenu("Departamentos", () => AbrirFormulario<FrmDepartamentos>());
+        AgregarBotonMenu("Países", () => AbrirFormulario<FrmPaises>());
 
-        // 4. Botón Municipios
-        btnMunicipios = CrearBoton("Gestión de Municipios", 200);
-        btnMunicipios.Click += (s, e) => AbrirFormulario<FrmMunicipios>();
-
-        // 5. Botón Empresas
-        btnEmpresas = CrearBoton("Gestión de Empresas", 260);
-        btnEmpresas.Click += (s, e) => AbrirFormulario<FrmEmpresas>();
-
-        // 6. Botón Colaboradores
-        btnColaboradores = CrearBoton("Gestión de Colaboradores", 320);
-        btnColaboradores.Click += (s, e) => AbrirFormulario<FrmColaboradores>();
+        // 4. Área de bienvenida (Derecha)
+        lblBienvenida = new Label();
+        lblBienvenida.Text = "Seleccione una opción del menú\npara comenzar a trabajar.";
+        lblBienvenida.Font = new Font("Segoe UI", 18F, FontStyle.Regular);
+        lblBienvenida.ForeColor = Color.Gray;
+        lblBienvenida.AutoSize = false;
+        lblBienvenida.TextAlign = ContentAlignment.MiddleCenter;
+        lblBienvenida.Dock = DockStyle.Fill;
+        this.Controls.Add(lblBienvenida);
+        lblBienvenida.BringToFront();
     }
 
-    // Un pequeño truco para no repetir código al crear botones
-    private Button CrearBoton(string texto, int posicionY)
+    private void AgregarBotonMenu(string texto, Action accion)
     {
-        var btn = new Button();
-        btn.Text = texto;
-        btn.Location = new Point(50, posicionY); // Todos alineados a la izquierda (X=50)
-        btn.Size = new Size(280, 40); // Ancho 280, Alto 40
-        btn.BackColor = Color.LightGray;
-        this.Controls.Add(btn); // ¡Importante! Agregarlo a la ventana
-        return btn;
+        Button btn = new Button();
+        btn.Dock = DockStyle.Top;
+        btn.Height = 60;
+        btn.Text = "  " + texto; // Espacio para "icono" imaginario
+        btn.TextAlign = ContentAlignment.MiddleLeft;
+        btn.FlatStyle = FlatStyle.Flat;
+        btn.FlatAppearance.BorderSize = 0;
+        btn.ForeColor = Color.Gainsboro;
+        btn.Font = new Font("Segoe UI", 11F);
+        btn.TextImageRelation = TextImageRelation.ImageBeforeText;
+        btn.Padding = new Padding(10, 0, 0, 0);
+        
+        // Efecto Hover sencillo
+        btn.MouseEnter += (s, e) => btn.BackColor = ThemeHelper.SecondaryColor;
+        btn.MouseLeave += (s, e) => btn.BackColor = ThemeHelper.PrimaryColor;
+        
+        btn.Click += (s, e) => accion();
+        
+        panelMenu.Controls.Add(btn);
+        // Truco: BringToFront para mantener el orden visual correcto con Dock=Top
+        btn.BringToFront(); 
+        panelLogo.SendToBack(); // El logo siempre arriba
     }
 
-    // Método genérico para abrir cualquier formulario
     private void AbrirFormulario<T>() where T : Form
     {
         try 
         {
-            // Pedimos el formulario al contenedor de inyección de dependencias
             var form = Program.ServiceProvider.GetRequiredService<T>();
+            // Opcional: Si quisieras abrirlo DENTRO del panel derecho (MDI), requeriría más lógica.
+            // Por ahora, mantendremos ShowDialog pero con el nuevo estilo.
+            form.StartPosition = FormStartPosition.CenterParent;
             form.ShowDialog();
         }
         catch (Exception ex)
         {
-            MessageBox.Show("Error al abrir: " + ex.Message);
+            MessageBox.Show("Error: " + ex.Message);
         }
     }
 }

@@ -2,6 +2,7 @@ using System.Drawing;
 using System.Windows.Forms;
 using RecursosHumanos.Application.DTOs;
 using RecursosHumanos.Application.Services;
+using RecursosHumanos.WinForms.Helpers;
 
 namespace RecursosHumanos.WinForms;
 
@@ -9,9 +10,11 @@ public class FrmMunicipios : Form
 {
     private readonly MunicipioService _service;
     private readonly DepartamentoService _deptoService;
+    
     private ComboBox cmbDeptos;
     private TextBox txtNombre;
     private DataGridView dgvDatos;
+    private Panel panelFormulario;
 
     public FrmMunicipios(MunicipioService service, DepartamentoService deptoService)
     {
@@ -23,49 +26,83 @@ public class FrmMunicipios : Form
     private async void ConfigurarUI()
     {
         this.Text = "Gestión de Municipios";
-        this.Size = new Size(600, 450);
+        this.Size = new Size(900, 550);
+        this.BackColor = ThemeHelper.BackgroundColor;
 
-        var lblDepto = new Label { Text = "Departamento:", Location = new Point(20, 20), AutoSize = true };
-        cmbDeptos = new ComboBox { Location = new Point(20, 45), Width = 200, DropDownStyle = ComboBoxStyle.DropDownList };
-        
-        var deptos = await _deptoService.ObtenerTodosAsync();
-        cmbDeptos.DataSource = deptos;
-        cmbDeptos.DisplayMember = "Nombre";
-        cmbDeptos.ValueMember = "Id";
+        // Panel Izquierdo
+        panelFormulario = new Panel();
+        panelFormulario.Dock = DockStyle.Left;
+        panelFormulario.Width = 300;
+        panelFormulario.BackColor = Color.White;
+        panelFormulario.Padding = new Padding(20);
+        this.Controls.Add(panelFormulario);
 
-        var lblNom = new Label { Text = "Nombre Municipio:", Location = new Point(240, 20), AutoSize = true };
-        txtNombre = new TextBox { Location = new Point(240, 45), Width = 200 };
+        var lblTitulo = new Label { Text = "Nuevo Municipio", Dock = DockStyle.Top, Height = 40, Font = new Font("Segoe UI", 12, FontStyle.Bold), ForeColor = ThemeHelper.PrimaryColor };
+        panelFormulario.Controls.Add(lblTitulo);
 
-        var btnGuardar = new Button { Text = "Guardar", Location = new Point(460, 43), Width = 100 };
+        // Inputs
+        CrearCampoInput("Nombre Municipio:", out txtNombre);
+        CrearCampoInput("Departamento:", out cmbDeptos);
+
+        // Botones
+        var btnGuardar = new Button { Text = "Guardar", Height = 45, Dock = DockStyle.Top };
+        ThemeHelper.EstilizarBoton(btnGuardar);
         btnGuardar.Click += async (s, e) => await Guardar();
+        
+        panelFormulario.Controls.Add(new Panel { Height = 20, Dock = DockStyle.Top });
+        panelFormulario.Controls.Add(btnGuardar);
 
-        var btnEliminar = new Button { Text = "Eliminar", Location = new Point(460, 75), Width = 100 };
+        var btnEliminar = new Button { Text = "Eliminar", Height = 45, Dock = DockStyle.Bottom };
+        ThemeHelper.EstilizarBoton(btnEliminar, esPeligroso: true);
         btnEliminar.Click += async (s, e) => await Eliminar();
+        panelFormulario.Controls.Add(btnEliminar);
 
-        dgvDatos = new DataGridView { Location = new Point(20, 110), Size = new Size(540, 280), ReadOnly = true, SelectionMode = DataGridViewSelectionMode.FullRowSelect };
-
-        this.Controls.Add(lblDepto); this.Controls.Add(cmbDeptos);
-        this.Controls.Add(lblNom); this.Controls.Add(txtNombre);
-        this.Controls.Add(btnGuardar); this.Controls.Add(btnEliminar);
+        // Grilla
+        dgvDatos = new DataGridView();
+        dgvDatos.Dock = DockStyle.Fill;
+        ThemeHelper.EstilizarGrid(dgvDatos);
         this.Controls.Add(dgvDatos);
+        dgvDatos.BringToFront();
+
+        await CargarCombos();
         await CargarDatos();
     }
 
+    // Helpers para crear campos (puedes copiarlos de FrmEmpresas o hacerlos métodos estáticos en ThemeHelper si prefieres)
+    private void CrearCampoInput(string labelText, out TextBox textBox) {
+        var p = new Panel { Height = 60, Dock = DockStyle.Top, Padding = new Padding(0,5,0,5) };
+        var l = new Label { Text = labelText, Dock = DockStyle.Top, Height = 20, Font = new Font("Segoe UI", 9) };
+        textBox = new TextBox { Dock = DockStyle.Top, Height = 30, Font = new Font("Segoe UI", 10), BorderStyle = BorderStyle.FixedSingle };
+        p.Controls.Add(textBox); p.Controls.Add(l); l.BringToFront();
+        panelFormulario.Controls.Add(p); p.BringToFront();
+    }
+    private void CrearCampoInput(string labelText, out ComboBox comboBox) {
+        var p = new Panel { Height = 60, Dock = DockStyle.Top, Padding = new Padding(0,5,0,5) };
+        var l = new Label { Text = labelText, Dock = DockStyle.Top, Height = 20, Font = new Font("Segoe UI", 9) };
+        comboBox = new ComboBox { Dock = DockStyle.Top, Height = 30, Font = new Font("Segoe UI", 10), DropDownStyle = ComboBoxStyle.DropDownList, FlatStyle = FlatStyle.Flat };
+        p.Controls.Add(comboBox); p.Controls.Add(l); l.BringToFront();
+        panelFormulario.Controls.Add(p); p.BringToFront();
+    }
+
+    private async Task CargarCombos() {
+        cmbDeptos.DataSource = await _deptoService.ObtenerTodosAsync();
+        cmbDeptos.DisplayMember = "Nombre"; cmbDeptos.ValueMember = "Id";
+    }
     private async Task CargarDatos() => dgvDatos.DataSource = await _service.ObtenerTodosAsync();
 
-    private async Task Guardar()
-    {
+    private async Task Guardar() {
         if (cmbDeptos.SelectedValue == null || string.IsNullOrWhiteSpace(txtNombre.Text)) return;
         await _service.CrearAsync(new MunicipioCreateDto(txtNombre.Text, (Guid)cmbDeptos.SelectedValue));
-        txtNombre.Text = "";
+        txtNombre.Clear();
         await CargarDatos();
-        MessageBox.Show("Municipio Guardado");
+        MessageBox.Show("Guardado");
     }
 
-    private async Task Eliminar()
-    {
+    private async Task Eliminar() {
         if (dgvDatos.SelectedRows.Count == 0) return;
-        await _service.EliminarAsync((Guid)dgvDatos.SelectedRows[0].Cells["Id"].Value);
-        await CargarDatos();
+        if(MessageBox.Show("¿Eliminar?", "Confirme", MessageBoxButtons.YesNo) == DialogResult.Yes){
+            await _service.EliminarAsync((Guid)dgvDatos.SelectedRows[0].Cells["Id"].Value);
+            await CargarDatos();
+        }
     }
 }

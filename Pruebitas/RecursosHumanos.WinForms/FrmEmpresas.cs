@@ -2,6 +2,7 @@ using System.Drawing;
 using System.Windows.Forms;
 using RecursosHumanos.Application.DTOs;
 using RecursosHumanos.Application.Services;
+using RecursosHumanos.WinForms.Helpers;
 
 namespace RecursosHumanos.WinForms;
 
@@ -9,9 +10,12 @@ public class FrmEmpresas : Form
 {
     private readonly EmpresaService _service;
     private readonly MunicipioService _muniService;
+    
+    // Controles
     private ComboBox cmbMunicipios;
     private TextBox txtNit, txtRazon, txtComercial, txtTel, txtEmail;
     private DataGridView dgvDatos;
+    private Panel panelFormulario;
 
     public FrmEmpresas(EmpresaService service, MunicipioService muniService)
     {
@@ -22,43 +26,92 @@ public class FrmEmpresas : Form
 
     private async void ConfigurarUI()
     {
+        // Configuración Ventana
         this.Text = "Gestión de Empresas";
-        this.Size = new Size(800, 600);
+        this.Size = new Size(1100, 700);
+        this.BackColor = ThemeHelper.BackgroundColor;
 
-        // Campos
-        CrearCampo("NIT:", 20, out txtNit);
-        CrearCampo("Razón Social:", 70, out txtRazon);
-        CrearCampo("Nombre Comercial:", 120, out txtComercial);
-        CrearCampo("Teléfono:", 170, out txtTel);
-        CrearCampo("Email:", 220, out txtEmail);
+        // --- 1. Panel Izquierdo (Formulario) ---
+        panelFormulario = new Panel();
+        panelFormulario.Dock = DockStyle.Left;
+        panelFormulario.Width = 350; // Un poco más ancho por los nombres largos
+        panelFormulario.BackColor = Color.White;
+        panelFormulario.Padding = new Padding(20);
+        panelFormulario.AutoScroll = true; // Permite scroll si hay muchos campos
+        this.Controls.Add(panelFormulario);
 
-        var lblMuni = new Label { Text = "Municipio:", Location = new Point(300, 20), AutoSize = true };
-        cmbMunicipios = new ComboBox { Location = new Point(300, 45), Width = 200, DropDownStyle = ComboBoxStyle.DropDownList };
-        var munis = await _muniService.ObtenerTodosAsync();
-        cmbMunicipios.DataSource = munis;
-        cmbMunicipios.DisplayMember = "Nombre";
-        cmbMunicipios.ValueMember = "Id";
+        // Título
+        var lblTitulo = new Label { Text = "Nueva Empresa", Dock = DockStyle.Top, Height = 40, Font = new Font("Segoe UI", 14, FontStyle.Bold), ForeColor = ThemeHelper.PrimaryColor };
+        panelFormulario.Controls.Add(lblTitulo);
 
-        var btnGuardar = new Button { Text = "Guardar Empresa", Location = new Point(300, 100), Size = new Size(200, 40) };
+        // Campos (Orden inverso para Dock=Top)
+        // Nota: Los agregamos usando un método auxiliar para limpiar el código
+        CrearCampoInput("Municipio:", out cmbMunicipios);
+        CrearCampoInput("Email:", out txtEmail);
+        CrearCampoInput("Teléfono:", out txtTel);
+        CrearCampoInput("Nombre Comercial:", out txtComercial);
+        CrearCampoInput("Razón Social:", out txtRazon);
+        CrearCampoInput("NIT:", out txtNit);
+
+        // Botones
+        var btnGuardar = new Button { Text = "Guardar", Height = 45, Dock = DockStyle.Top };
+        ThemeHelper.EstilizarBoton(btnGuardar);
         btnGuardar.Click += async (s, e) => await Guardar();
 
-        var btnEliminar = new Button { Text = "Eliminar", Location = new Point(300, 150), Size = new Size(200, 40) };
+        panelFormulario.Controls.Add(new Panel { Height = 20, Dock = DockStyle.Top }); // Espacio
+        panelFormulario.Controls.Add(btnGuardar);
+
+        var btnEliminar = new Button { Text = "Eliminar", Height = 45, Dock = DockStyle.Bottom };
+        ThemeHelper.EstilizarBoton(btnEliminar, esPeligroso: true);
         btnEliminar.Click += async (s, e) => await Eliminar();
+        panelFormulario.Controls.Add(btnEliminar);
 
-        dgvDatos = new DataGridView { Location = new Point(20, 280), Size = new Size(740, 250), ReadOnly = true, SelectionMode = DataGridViewSelectionMode.FullRowSelect };
-
-        this.Controls.Add(lblMuni); this.Controls.Add(cmbMunicipios);
-        this.Controls.Add(btnGuardar); this.Controls.Add(btnEliminar);
+        // --- 2. Grilla (Derecha) ---
+        dgvDatos = new DataGridView();
+        dgvDatos.Dock = DockStyle.Fill;
+        ThemeHelper.EstilizarGrid(dgvDatos);
         this.Controls.Add(dgvDatos);
+        dgvDatos.BringToFront();
+
+        // Carga inicial
+        await CargarCombos();
         await CargarDatos();
     }
 
-    private void CrearCampo(string label, int y, out TextBox txt)
+    private void CrearCampoInput(string labelText, out TextBox textBox)
     {
-        var lbl = new Label { Text = label, Location = new Point(20, y), AutoSize = true };
-        txt = new TextBox { Location = new Point(20, y + 20), Width = 250 };
-        this.Controls.Add(lbl);
-        this.Controls.Add(txt);
+        var panelItem = new Panel { Height = 65, Dock = DockStyle.Top, Padding = new Padding(0, 5, 0, 5) };
+        var lbl = new Label { Text = labelText, Dock = DockStyle.Top, Height = 20, Font = new Font("Segoe UI", 9, FontStyle.Bold), ForeColor = Color.Gray };
+        textBox = new TextBox { Dock = DockStyle.Top, Height = 30, Font = new Font("Segoe UI", 10), BorderStyle = BorderStyle.FixedSingle };
+        
+        panelItem.Controls.Add(textBox);
+        panelItem.Controls.Add(lbl);
+        lbl.BringToFront(); // Label arriba
+
+        panelFormulario.Controls.Add(panelItem);
+        panelItem.BringToFront(); // Mantiene el orden visual correcto
+    }
+
+    private void CrearCampoInput(string labelText, out ComboBox comboBox)
+    {
+        var panelItem = new Panel { Height = 65, Dock = DockStyle.Top, Padding = new Padding(0, 5, 0, 5) };
+        var lbl = new Label { Text = labelText, Dock = DockStyle.Top, Height = 20, Font = new Font("Segoe UI", 9, FontStyle.Bold), ForeColor = Color.Gray };
+        comboBox = new ComboBox { Dock = DockStyle.Top, Height = 30, Font = new Font("Segoe UI", 10), DropDownStyle = ComboBoxStyle.DropDownList, FlatStyle = FlatStyle.Flat };
+        
+        panelItem.Controls.Add(comboBox);
+        panelItem.Controls.Add(lbl);
+        lbl.BringToFront();
+
+        panelFormulario.Controls.Add(panelItem);
+        panelItem.BringToFront();
+    }
+
+    private async Task CargarCombos()
+    {
+        var lista = await _muniService.ObtenerTodosAsync();
+        cmbMunicipios.DataSource = lista;
+        cmbMunicipios.DisplayMember = "Nombre";
+        cmbMunicipios.ValueMember = "Id";
     }
 
     private async Task CargarDatos() => dgvDatos.DataSource = await _service.ObtenerTodosAsync();
@@ -71,13 +124,18 @@ public class FrmEmpresas : Form
             await _service.CrearAsync(dto);
             await CargarDatos();
             MessageBox.Show("Empresa Guardada");
+            Limpiar();
         } catch (Exception ex) { MessageBox.Show(ex.Message); }
     }
 
     private async Task Eliminar()
     {
         if (dgvDatos.SelectedRows.Count == 0) return;
-        await _service.EliminarAsync((Guid)dgvDatos.SelectedRows[0].Cells["Id"].Value);
-        await CargarDatos();
+        if(MessageBox.Show("¿Eliminar empresa?", "Confirmar", MessageBoxButtons.YesNo) == DialogResult.Yes) {
+            await _service.EliminarAsync((Guid)dgvDatos.SelectedRows[0].Cells["Id"].Value);
+            await CargarDatos();
+        }
     }
+
+    private void Limpiar() { txtNit.Clear(); txtRazon.Clear(); txtComercial.Clear(); txtTel.Clear(); txtEmail.Clear(); }
 }
