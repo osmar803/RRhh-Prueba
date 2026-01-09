@@ -1,12 +1,13 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration; // <--- NECESARIO PARA LEER JSON
 using Microsoft.Extensions.DependencyInjection;
 using RecursosHumanos.Application.Mappings;
 using RecursosHumanos.Application.Services;
 using RecursosHumanos.Domain.Repositories;
 using RecursosHumanos.Infrastructure.Data;
 using RecursosHumanos.Infrastructure.Repositories;
-// ¡IMPORTANTE! Asegúrate de que este using esté presente para encontrar los formularios
-using RecursosHumanos.WinForms; 
+using RecursosHumanos.WinForms;
+using System.IO; // <--- NECESARIO PARA Directory.GetCurrentDirectory()
 
 namespace RecursosHumanos.WinForms;
 
@@ -19,8 +20,18 @@ static class Program
     {
         ApplicationConfiguration.Initialize();
 
+        // --- 1. CONFIGURACIÓN DEL APPSETTINGS.JSON ---
+        var builder = new ConfigurationBuilder()
+            .SetBasePath(Directory.GetCurrentDirectory())
+            .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true);
+
+        IConfiguration configuration = builder.Build();
+        // ---------------------------------------------
+
         var services = new ServiceCollection();
-        ConfigureServices(services);
+        
+        // Pasamos la configuración al método para usarla dentro
+        ConfigureServices(services, configuration);
 
         ServiceProvider = services.BuildServiceProvider();
 
@@ -35,37 +46,39 @@ static class Program
         }
     }
 
-    private static void ConfigureServices(IServiceCollection services)
+    private static void ConfigureServices(IServiceCollection services, IConfiguration configuration)
     {
-        // 1. Base de Datos
+        // 2. Obtener la cadena de conexión del archivo JSON
+        var connectionString = configuration.GetConnectionString("DefaultConnection");
+
+        // 3. Base de Datos (Usando la variable connectionString)
         services.AddDbContext<AppDbContext>(options =>
-            options.UseSqlServer("Server=localhost;Database=RecursosHumanosDB;Trusted_Connection=True;TrustServerCertificate=True;",
+            options.UseSqlServer(connectionString,
             b => b.MigrationsAssembly("RecursosHumanos.Infrastructure")));
 
-        // 2. AutoMapper
+        // 4. AutoMapper
         services.AddAutoMapper(typeof(MappingProfile));
 
-        // 3. Repositorios
+        // 5. Repositorios
         services.AddScoped<IPaisRepository, PaisRepository>();
         services.AddScoped<IDepartamentoRepository, DepartamentoRepository>();
         services.AddScoped<IMunicipioRepository, MunicipioRepository>();
         services.AddScoped<IEmpresaRepository, EmpresaRepository>();
         services.AddScoped<IColaboradorRepository, ColaboradorRepository>();
 
-        // 4. Servicios
+        // 6. Servicios
         services.AddScoped<PaisService>();
         services.AddScoped<DepartamentoService>();
         services.AddScoped<MunicipioService>();
         services.AddScoped<EmpresaService>();
         services.AddScoped<ColaboradorService>();
 
-        // 5. FORMULARIOS (¡Aquí estaba el error!)
-        // Debes registrar CADA formulario nuevo que crees
+        // 7. FORMULARIOS
         services.AddTransient<Form1>();
-        services.AddTransient<FrmPaises>();        // <--- Faltaba esto
-        services.AddTransient<FrmDepartamentos>(); // <--- Faltaba esto
-        services.AddTransient<FrmMunicipios>();    // <--- Faltaba esto
-        services.AddTransient<FrmEmpresas>();      // <--- Faltaba esto
-        services.AddTransient<FrmColaboradores>(); // <--- Faltaba esto
+        services.AddTransient<FrmPaises>();
+        services.AddTransient<FrmDepartamentos>();
+        services.AddTransient<FrmMunicipios>();
+        services.AddTransient<FrmEmpresas>();
+        services.AddTransient<FrmColaboradores>();
     }
 }
