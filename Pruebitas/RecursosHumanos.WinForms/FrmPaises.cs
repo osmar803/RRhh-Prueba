@@ -19,16 +19,44 @@ public class FrmPaises : Form
     {
         _service = service;
         ConfigurarUI();
-        CargarDatos();
+        
+        // Manejo de carga inicial con protección contra cancelaciones de tareas
+        this.Load += async (s, e) => {
+            try 
+            {
+                await CargarDatos();
+            }
+            catch (OperationCanceledException) { /* Ignorar al cerrar el scope rápidamente */ }
+            catch (Exception ex) { MessageBox.Show("Error al cargar: " + ex.Message); }
+        };
     }
 
     private void ConfigurarUI()
     {
         this.Text = "Gestión de Países";
-        this.Size = new Size(800, 450);
+        this.Size = new Size(850, 500); 
         this.BackColor = ThemeHelper.BackgroundColor;
 
-        // Panel Izquierdo
+        // --- 1. Panel de Ayuda / Instrucciones ---
+        var panelAyuda = new Panel { 
+            Dock = DockStyle.Top, 
+            Height = 50, 
+            BackColor = ThemeHelper.InfoBackgroundColor, 
+            Padding = new Padding(10) 
+        };
+        
+        var lblInstruccion = new Label {
+            Text = "ℹ️ Para actualizar: Seleccione un país de la lista, modifique el nombre en el panel izquierdo y guarde.",
+            Dock = DockStyle.Fill,
+            TextAlign = ContentAlignment.MiddleLeft
+        };
+        ThemeHelper.EstilizarLabelAyuda(lblInstruccion);
+        
+        panelAyuda.Controls.Add(lblInstruccion);
+        this.Controls.Add(panelAyuda);
+
+
+        // --- 2. Panel Izquierdo (Formulario) ---
         panelFormulario = new Panel { Dock = DockStyle.Left, Width = 280, BackColor = Color.White, Padding = new Padding(20) };
         this.Controls.Add(panelFormulario);
 
@@ -44,7 +72,7 @@ public class FrmPaises : Form
         btnGuardar.Click += async (s, e) => await Guardar();
 
         var btnCancelar = new Button { Text = "Cancelar Edición", Height = 30, Dock = DockStyle.Top, FlatStyle = FlatStyle.Flat, ForeColor = Color.Gray };
-        btnCancelar.Click += (s,e) => Limpiar(); // Botón extra para salir del modo edición
+        btnCancelar.Click += (s,e) => Limpiar(); 
 
         panelFormulario.Controls.Add(new Panel { Height = 10, Dock = DockStyle.Top });
         panelFormulario.Controls.Add(btnCancelar); 
@@ -56,25 +84,33 @@ public class FrmPaises : Form
         btnEliminar.Click += async (s, e) => await Eliminar();
         panelFormulario.Controls.Add(btnEliminar);
 
-        // Grilla
+        // --- 3. Grilla de Datos ---
         dgvDatos = new DataGridView { Dock = DockStyle.Fill };
         ThemeHelper.EstilizarGrid(dgvDatos);
-        // Evento clave para edición:
         dgvDatos.Click += (s, e) => SeleccionarFila(); 
         
         this.Controls.Add(dgvDatos);
-        dgvDatos.BringToFront();
+        dgvDatos.BringToFront(); 
     }
 
     private void CrearCampoInput(string labelText, out TextBox textBox) {
-        var p = new Panel { Height = 60, Dock = DockStyle.Top, Padding = new Padding(0,5,0,5) };
+        var p = new Panel { Height = 65, Dock = DockStyle.Top, Padding = new Padding(0,5,0,5) };
         var l = new Label { Text = labelText, Dock = DockStyle.Top, Height = 20, Font = new Font("Segoe UI", 9) };
         textBox = new TextBox { Dock = DockStyle.Top, Height = 30, Font = new Font("Segoe UI", 10), BorderStyle = BorderStyle.FixedSingle };
-        p.Controls.Add(textBox); p.Controls.Add(l); l.BringToFront();
-        panelFormulario.Controls.Add(p); p.BringToFront();
+        
+        p.Controls.Add(textBox); 
+        p.Controls.Add(l); 
+        l.BringToFront(); 
+        
+        panelFormulario.Controls.Add(p); 
+        p.BringToFront();
     }
 
-    private async Task CargarDatos() => dgvDatos.DataSource = await _service.ObtenerTodosAsync();
+    private async Task CargarDatos() {
+        try {
+            dgvDatos.DataSource = await _service.ObtenerTodosAsync();
+        } catch (OperationCanceledException) { }
+    }
 
     private async Task Guardar()
     {
@@ -106,9 +142,9 @@ public class FrmPaises : Form
     {
         if (dgvDatos.SelectedRows.Count > 0) {
             _idSeleccionado = (Guid)dgvDatos.SelectedRows[0].Cells["Id"].Value;
-            txtNombre.Text = dgvDatos.SelectedRows[0].Cells["Nombre"].Value.ToString();
+            txtNombre.Text = dgvDatos.SelectedRows[0].Cells["Nombre"]?.Value?.ToString() ?? "";
         }
     }
 
-    private void Limpiar() { txtNombre.Text = ""; _idSeleccionado = null; }
+    private void Limpiar() { txtNombre.Text = ""; _idSeleccionado = null; dgvDatos.ClearSelection(); }
 }

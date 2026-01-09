@@ -10,6 +10,7 @@ public static class ThemeHelper
     public static Color SecondaryColor = Color.FromArgb(0, 150, 136); // Turquesa (Botones acción)
     public static Color DangerColor = Color.FromArgb(220, 53, 69);    // Rojo (Eliminar)
     public static Color BackgroundColor = Color.FromArgb(240, 240, 240); // Gris muy claro (Fondo)
+    public static Color InfoBackgroundColor = Color.FromArgb(225, 245, 254); // Azul muy claro para alertas/ayuda
     public static Color TextColor = Color.Black;
 
     // Método para estilizar botones
@@ -22,6 +23,14 @@ public static class ThemeHelper
         btn.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
         btn.Cursor = Cursors.Hand;
         btn.Size = new Size(150, 40); // Tamaño estándar
+    }
+
+    // Nuevo: Método para estilizar etiquetas de ayuda o instrucciones
+    public static void EstilizarLabelAyuda(Label lbl)
+    {
+        lbl.Font = new Font("Segoe UI", 9F, FontStyle.Italic);
+        lbl.ForeColor = Color.FromArgb(64, 64, 64); // Gris oscuro
+        lbl.BackColor = Color.Transparent;
     }
 
     // Método para estilizar DataGridView (Tablas)
@@ -46,6 +55,21 @@ public static class ThemeHelper
         dgv.RowHeadersVisible = false; // Ocultar la primera columna vacía
         dgv.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill; // Llenar espacio
         dgv.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
+
+        // --- LÓGICA PARA OCULTAR IDs AUTOMÁTICAMENTE ---
+        // Este evento se dispara cada vez que la tabla recibe datos (DataSource)
+        dgv.DataBindingComplete += (s, e) => 
+        {
+            foreach (DataGridViewColumn col in dgv.Columns)
+            {
+                // Si la columna se llama "Id" o termina en "Id" (ej: PaisId, MunicipioId), la ocultamos
+                if (col.Name.Equals("Id", StringComparison.OrdinalIgnoreCase) || 
+                    col.Name.EndsWith("Id", StringComparison.OrdinalIgnoreCase))
+                {
+                    col.Visible = false;
+                }
+            }
+        };
     }
 
     // Método para estilizar Labels y TextBoxes

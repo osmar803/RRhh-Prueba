@@ -1,7 +1,7 @@
 using System.Drawing;
 using System.Windows.Forms;
 using Microsoft.Extensions.DependencyInjection;
-using RecursosHumanos.WinForms.Helpers; // Importar el helper
+using RecursosHumanos.WinForms.Helpers;
 
 namespace RecursosHumanos.WinForms;
 
@@ -9,101 +9,163 @@ public partial class Form1 : Form
 {
     private Panel panelMenu;
     private Panel panelLogo;
+    private Panel panelContenedor; 
+    private Button btnVolver;      
     private Label lblBienvenida;
+    
+    private Form? formularioActivo = null; 
+    private IServiceScope? scopeActivo = null;
+
+    // BLOQUEO DE SEGURIDAD
+    private bool estaCargando = false;
 
     public Form1()
     {
         this.Text = "Sistema de RRHH - Inicio";
-        this.Size = new Size(900, 600); // Ventana más grande
+        this.Size = new Size(1150, 750); 
         this.StartPosition = FormStartPosition.CenterScreen;
-        this.BackColor = ThemeHelper.BackgroundColor; // Fondo gris claro
+        this.BackColor = ThemeHelper.BackgroundColor;
 
         InitializeComponentsModerno();
     }
 
     private void InitializeComponentsModerno()
     {
-        // 1. Panel Lateral (Menú)
-        panelMenu = new Panel();
-        panelMenu.Dock = DockStyle.Left;
-        panelMenu.Width = 220;
-        panelMenu.BackColor = ThemeHelper.PrimaryColor;
+        panelMenu = new Panel { Dock = DockStyle.Left, Width = 230, BackColor = ThemeHelper.PrimaryColor };
         this.Controls.Add(panelMenu);
 
-        // 2. Panel Logo (Parte superior del menú)
-        panelLogo = new Panel();
-        panelLogo.Dock = DockStyle.Top;
-        panelLogo.Height = 80;
-        panelLogo.BackColor = Color.FromArgb(39, 39, 58); // Un poco más oscuro
-        
-        var lblTitulo = new Label();
-        lblTitulo.Text = "RRHH\nSystem";
-        lblTitulo.ForeColor = Color.White;
-        lblTitulo.Font = new Font("Segoe UI", 14F, FontStyle.Bold);
-        lblTitulo.TextAlign = ContentAlignment.MiddleCenter;
-        lblTitulo.Dock = DockStyle.Fill;
+        panelLogo = new Panel { Dock = DockStyle.Top, Height = 80, BackColor = Color.FromArgb(39, 39, 58) };
+        var lblTitulo = new Label { 
+            Text = "RRHH\nSystem", ForeColor = Color.White, Font = new Font("Segoe UI", 14F, FontStyle.Bold),
+            TextAlign = ContentAlignment.MiddleCenter, Dock = DockStyle.Fill 
+        };
         panelLogo.Controls.Add(lblTitulo);
         panelMenu.Controls.Add(panelLogo);
 
-        // 3. Botones del Menú (Usando Dock Top para apilarlos)
-        // Nota: Los agregamos en orden inverso porque Dock=Top empuja hacia abajo
-        AgregarBotonMenu("Colaboradores", () => AbrirFormulario<FrmColaboradores>());
-        AgregarBotonMenu("Empresas", () => AbrirFormulario<FrmEmpresas>());
-        AgregarBotonMenu("Municipios", () => AbrirFormulario<FrmMunicipios>());
-        AgregarBotonMenu("Departamentos", () => AbrirFormulario<FrmDepartamentos>());
-        AgregarBotonMenu("Países", () => AbrirFormulario<FrmPaises>());
+        // Botones
+        AgregarBotonMenu("Colaboradores", () => AbrirFormularioEnPanel<FrmColaboradores>());
+        AgregarBotonMenu("Empresas", () => AbrirFormularioEnPanel<FrmEmpresas>());
+        AgregarBotonMenu("Municipios", () => AbrirFormularioEnPanel<FrmMunicipios>());
+        AgregarBotonMenu("Departamentos", () => AbrirFormularioEnPanel<FrmDepartamentos>());
+        AgregarBotonMenu("Países", () => AbrirFormularioEnPanel<FrmPaises>());
 
-        // 4. Área de bienvenida (Derecha)
-        lblBienvenida = new Label();
-        lblBienvenida.Text = "Seleccione una opción del menú\npara comenzar a trabajar.";
-        lblBienvenida.Font = new Font("Segoe UI", 18F, FontStyle.Regular);
-        lblBienvenida.ForeColor = Color.Gray;
-        lblBienvenida.AutoSize = false;
-        lblBienvenida.TextAlign = ContentAlignment.MiddleCenter;
-        lblBienvenida.Dock = DockStyle.Fill;
-        this.Controls.Add(lblBienvenida);
-        lblBienvenida.BringToFront();
+        panelContenedor = new Panel { 
+            Dock = DockStyle.Fill, 
+            BackColor = ThemeHelper.BackgroundColor,
+            AutoScroll = true // Esto evita que se corte la pantalla
+        };
+        this.Controls.Add(panelContenedor);
+        panelContenedor.BringToFront(); 
+
+        btnVolver = new Button {
+            Text = "⬅  Volver al Menú Principal", Height = 40, Dock = DockStyle.Top,
+            FlatStyle = FlatStyle.Flat, BackColor = Color.FromArgb(119, 136, 153), 
+            ForeColor = Color.White, Font = new Font("Segoe UI", 10F, FontStyle.Bold), Cursor = Cursors.Hand,
+            Visible = false
+        };
+        btnVolver.FlatAppearance.BorderSize = 0;
+        btnVolver.Click += (s, e) => VolverAlInicio();
+        panelContenedor.Controls.Add(btnVolver);
+
+        lblBienvenida = new Label {
+            Text = "Bienvenido al Sistema de RRHH\n\nSeleccione una opción del menú lateral.",
+            Font = new Font("Segoe UI", 16F, FontStyle.Regular), ForeColor = Color.Gray,
+            TextAlign = ContentAlignment.MiddleCenter, Dock = DockStyle.Fill
+        };
+        panelContenedor.Controls.Add(lblBienvenida);
     }
 
     private void AgregarBotonMenu(string texto, Action accion)
     {
-        Button btn = new Button();
-        btn.Dock = DockStyle.Top;
-        btn.Height = 60;
-        btn.Text = "  " + texto; // Espacio para "icono" imaginario
-        btn.TextAlign = ContentAlignment.MiddleLeft;
-        btn.FlatStyle = FlatStyle.Flat;
+        Button btn = new Button {
+            Dock = DockStyle.Top, Height = 60, Text = "  " + texto, TextAlign = ContentAlignment.MiddleLeft,
+            FlatStyle = FlatStyle.Flat, ForeColor = Color.Gainsboro, Font = new Font("Segoe UI", 11F),
+            TextImageRelation = TextImageRelation.ImageBeforeText, Padding = new Padding(10, 0, 0, 0)
+        };
         btn.FlatAppearance.BorderSize = 0;
-        btn.ForeColor = Color.Gainsboro;
-        btn.Font = new Font("Segoe UI", 11F);
-        btn.TextImageRelation = TextImageRelation.ImageBeforeText;
-        btn.Padding = new Padding(10, 0, 0, 0);
-        
-        // Efecto Hover sencillo
-        btn.MouseEnter += (s, e) => btn.BackColor = ThemeHelper.SecondaryColor;
-        btn.MouseLeave += (s, e) => btn.BackColor = ThemeHelper.PrimaryColor;
-        
-        btn.Click += (s, e) => accion();
-        
+        // Evitamos que el clic se procese si ya estamos cargando
+        btn.Click += (s, e) => {
+            if (!estaCargando) accion();
+        };
         panelMenu.Controls.Add(btn);
-        // Truco: BringToFront para mantener el orden visual correcto con Dock=Top
         btn.BringToFront(); 
-        panelLogo.SendToBack(); // El logo siempre arriba
+        panelLogo.SendToBack();
     }
 
-    private void AbrirFormulario<T>() where T : Form
+    private async void AbrirFormularioEnPanel<T>() where T : Form
     {
+        // 1. Verificación doble de seguridad
+        if (estaCargando) return;
+
         try 
         {
-            var form = Program.ServiceProvider.GetRequiredService<T>();
-            // Opcional: Si quisieras abrirlo DENTRO del panel derecho (MDI), requeriría más lógica.
-            // Por ahora, mantendremos ShowDialog pero con el nuevo estilo.
-            form.StartPosition = FormStartPosition.CenterParent;
-            form.ShowDialog();
+            estaCargando = true;
+            panelMenu.Enabled = false; // DESHABILITA TODO EL MENÚ DE INMEDIATO
+            this.Cursor = Cursors.WaitCursor;
+
+            CerrarFormularioActivo();
+
+            // 2. PAUSA DE SEGURIDAD: 
+            // Esto permite que el motor de la base de datos termine de liberar los recursos anteriores
+            await Task.Delay(250); 
+
+            scopeActivo = Program.ServiceProvider.CreateScope();
+            var form = scopeActivo.ServiceProvider.GetRequiredService<T>();
+            
+            form.TopLevel = false;
+            form.FormBorderStyle = FormBorderStyle.None;
+            form.Dock = DockStyle.Fill;
+            
+            panelContenedor.Controls.Add(form);
+            formularioActivo = form;
+
+            lblBienvenida.Visible = false;
+            btnVolver.Visible = true; 
+            
+            form.Show();
+            form.BringToFront(); 
         }
         catch (Exception ex)
         {
-            MessageBox.Show("Error: " + ex.Message);
+            // Ignoramos errores de cancelación por navegación rápida
+            if (!(ex is OperationCanceledException || ex.InnerException is OperationCanceledException))
+            {
+                MessageBox.Show("Error al cargar módulo: " + ex.Message);
+            }
+        }
+        finally
+        {
+            // 3. LIBERACIÓN LENTA:
+            // Esperamos un momento antes de permitir clics de nuevo para evitar rebotes
+            await Task.Delay(100);
+            estaCargando = false;
+            panelMenu.Enabled = true;
+            this.Cursor = Cursors.Default;
+        }
+    }
+
+    private void VolverAlInicio()
+    {
+        CerrarFormularioActivo();
+        btnVolver.Visible = false;
+        lblBienvenida.Visible = true;
+    }
+
+    private void CerrarFormularioActivo()
+    {
+        if (formularioActivo != null)
+        {
+            formularioActivo.Hide(); // Ocultar para que no se vea feo mientras se destruye
+            formularioActivo.Close();
+            panelContenedor.Controls.Remove(formularioActivo);
+            formularioActivo.Dispose();
+            formularioActivo = null;
+        }
+
+        if (scopeActivo != null)
+        {
+            scopeActivo.Dispose(); // Libera el DbContext
+            scopeActivo = null;
         }
     }
 }
