@@ -10,7 +10,8 @@ public class FrmMunicipios : Form
 {
     private readonly MunicipioService _service;
     private readonly DepartamentoService _deptoService;
-    
+    private Guid? _idSeleccionado = null;
+
     private ComboBox cmbDeptos;
     private TextBox txtNombre;
     private DataGridView dgvDatos;
@@ -26,30 +27,28 @@ public class FrmMunicipios : Form
     private async void ConfigurarUI()
     {
         this.Text = "Gestión de Municipios";
-        this.Size = new Size(900, 550);
+        this.Size = new Size(950, 550);
         this.BackColor = ThemeHelper.BackgroundColor;
 
-        // Panel Izquierdo
-        panelFormulario = new Panel();
-        panelFormulario.Dock = DockStyle.Left;
-        panelFormulario.Width = 300;
-        panelFormulario.BackColor = Color.White;
-        panelFormulario.Padding = new Padding(20);
+        panelFormulario = new Panel { Dock = DockStyle.Left, Width = 300, BackColor = Color.White, Padding = new Padding(20) };
         this.Controls.Add(panelFormulario);
 
-        var lblTitulo = new Label { Text = "Nuevo Municipio", Dock = DockStyle.Top, Height = 40, Font = new Font("Segoe UI", 12, FontStyle.Bold), ForeColor = ThemeHelper.PrimaryColor };
+        var lblTitulo = new Label { Text = "Municipio", Dock = DockStyle.Top, Height = 40, Font = new Font("Segoe UI", 12, FontStyle.Bold), ForeColor = ThemeHelper.PrimaryColor };
         panelFormulario.Controls.Add(lblTitulo);
 
-        // Inputs
         CrearCampoInput("Nombre Municipio:", out txtNombre);
         CrearCampoInput("Departamento:", out cmbDeptos);
 
-        // Botones
         var btnGuardar = new Button { Text = "Guardar", Height = 45, Dock = DockStyle.Top };
         ThemeHelper.EstilizarBoton(btnGuardar);
         btnGuardar.Click += async (s, e) => await Guardar();
-        
-        panelFormulario.Controls.Add(new Panel { Height = 20, Dock = DockStyle.Top });
+
+        var btnCancelar = new Button { Text = "Cancelar Edición", Height = 30, Dock = DockStyle.Top, FlatStyle = FlatStyle.Flat, ForeColor = Color.Gray };
+        btnCancelar.Click += (s, e) => Limpiar();
+
+        panelFormulario.Controls.Add(new Panel { Height = 10, Dock = DockStyle.Top });
+        panelFormulario.Controls.Add(btnCancelar);
+        panelFormulario.Controls.Add(new Panel { Height = 10, Dock = DockStyle.Top });
         panelFormulario.Controls.Add(btnGuardar);
 
         var btnEliminar = new Button { Text = "Eliminar", Height = 45, Dock = DockStyle.Bottom };
@@ -57,10 +56,9 @@ public class FrmMunicipios : Form
         btnEliminar.Click += async (s, e) => await Eliminar();
         panelFormulario.Controls.Add(btnEliminar);
 
-        // Grilla
-        dgvDatos = new DataGridView();
-        dgvDatos.Dock = DockStyle.Fill;
+        dgvDatos = new DataGridView { Dock = DockStyle.Fill };
         ThemeHelper.EstilizarGrid(dgvDatos);
+        dgvDatos.Click += (s, e) => SeleccionarFila();
         this.Controls.Add(dgvDatos);
         dgvDatos.BringToFront();
 
@@ -68,19 +66,18 @@ public class FrmMunicipios : Form
         await CargarDatos();
     }
 
-    // Helpers para crear campos (puedes copiarlos de FrmEmpresas o hacerlos métodos estáticos en ThemeHelper si prefieres)
-    private void CrearCampoInput(string labelText, out TextBox textBox) {
+    private void CrearCampoInput(string label, out TextBox txt) { /* ... copiar del anterior ... */ 
         var p = new Panel { Height = 60, Dock = DockStyle.Top, Padding = new Padding(0,5,0,5) };
-        var l = new Label { Text = labelText, Dock = DockStyle.Top, Height = 20, Font = new Font("Segoe UI", 9) };
-        textBox = new TextBox { Dock = DockStyle.Top, Height = 30, Font = new Font("Segoe UI", 10), BorderStyle = BorderStyle.FixedSingle };
-        p.Controls.Add(textBox); p.Controls.Add(l); l.BringToFront();
+        var l = new Label { Text = label, Dock = DockStyle.Top, Height = 20, Font = new Font("Segoe UI", 9) };
+        txt = new TextBox { Dock = DockStyle.Top, Height = 30, Font = new Font("Segoe UI", 10), BorderStyle = BorderStyle.FixedSingle };
+        p.Controls.Add(txt); p.Controls.Add(l); l.BringToFront();
         panelFormulario.Controls.Add(p); p.BringToFront();
     }
-    private void CrearCampoInput(string labelText, out ComboBox comboBox) {
+    private void CrearCampoInput(string label, out ComboBox cmb) { /* ... copiar del anterior ... */ 
         var p = new Panel { Height = 60, Dock = DockStyle.Top, Padding = new Padding(0,5,0,5) };
-        var l = new Label { Text = labelText, Dock = DockStyle.Top, Height = 20, Font = new Font("Segoe UI", 9) };
-        comboBox = new ComboBox { Dock = DockStyle.Top, Height = 30, Font = new Font("Segoe UI", 10), DropDownStyle = ComboBoxStyle.DropDownList, FlatStyle = FlatStyle.Flat };
-        p.Controls.Add(comboBox); p.Controls.Add(l); l.BringToFront();
+        var l = new Label { Text = label, Dock = DockStyle.Top, Height = 20, Font = new Font("Segoe UI", 9) };
+        cmb = new ComboBox { Dock = DockStyle.Top, Height = 30, Font = new Font("Segoe UI", 10), DropDownStyle = ComboBoxStyle.DropDownList, FlatStyle = FlatStyle.Flat };
+        p.Controls.Add(cmb); p.Controls.Add(l); l.BringToFront();
         panelFormulario.Controls.Add(p); p.BringToFront();
     }
 
@@ -92,17 +89,36 @@ public class FrmMunicipios : Form
 
     private async Task Guardar() {
         if (cmbDeptos.SelectedValue == null || string.IsNullOrWhiteSpace(txtNombre.Text)) return;
-        await _service.CrearAsync(new MunicipioCreateDto(txtNombre.Text, (Guid)cmbDeptos.SelectedValue));
-        txtNombre.Clear();
-        await CargarDatos();
-        MessageBox.Show("Guardado");
+        try {
+            if (_idSeleccionado == null) {
+                await _service.CrearAsync(new MunicipioCreateDto(txtNombre.Text, (Guid)cmbDeptos.SelectedValue));
+                MessageBox.Show("Guardado");
+            } else {
+                await _service.ActualizarAsync(new MunicipioUpdateDto(_idSeleccionado.Value, txtNombre.Text, (Guid)cmbDeptos.SelectedValue));
+                MessageBox.Show("Actualizado");
+            }
+            Limpiar();
+            await CargarDatos();
+        } catch (Exception ex) { MessageBox.Show(ex.Message); }
+    }
+
+    private void SeleccionarFila() {
+        if (dgvDatos.SelectedRows.Count > 0) {
+            var row = dgvDatos.SelectedRows[0];
+            _idSeleccionado = (Guid)row.Cells["Id"].Value;
+            txtNombre.Text = row.Cells["Nombre"].Value.ToString();
+            if(row.Cells["DepartamentoId"].Value != null) 
+                cmbDeptos.SelectedValue = row.Cells["DepartamentoId"].Value;
+        }
     }
 
     private async Task Eliminar() {
         if (dgvDatos.SelectedRows.Count == 0) return;
         if(MessageBox.Show("¿Eliminar?", "Confirme", MessageBoxButtons.YesNo) == DialogResult.Yes){
             await _service.EliminarAsync((Guid)dgvDatos.SelectedRows[0].Cells["Id"].Value);
+            Limpiar();
             await CargarDatos();
         }
     }
+    private void Limpiar() { txtNombre.Text = ""; cmbDeptos.SelectedIndex = -1; _idSeleccionado = null; }
 }

@@ -10,8 +10,8 @@ public class FrmEmpresas : Form
 {
     private readonly EmpresaService _service;
     private readonly MunicipioService _muniService;
-    
-    // Controles
+    private Guid? _idSeleccionado = null;
+
     private ComboBox cmbMunicipios;
     private TextBox txtNit, txtRazon, txtComercial, txtTel, txtEmail;
     private DataGridView dgvDatos;
@@ -26,26 +26,17 @@ public class FrmEmpresas : Form
 
     private async void ConfigurarUI()
     {
-        // Configuración Ventana
         this.Text = "Gestión de Empresas";
         this.Size = new Size(1100, 700);
         this.BackColor = ThemeHelper.BackgroundColor;
 
-        // --- 1. Panel Izquierdo (Formulario) ---
-        panelFormulario = new Panel();
-        panelFormulario.Dock = DockStyle.Left;
-        panelFormulario.Width = 350; // Un poco más ancho por los nombres largos
-        panelFormulario.BackColor = Color.White;
-        panelFormulario.Padding = new Padding(20);
-        panelFormulario.AutoScroll = true; // Permite scroll si hay muchos campos
+        panelFormulario = new Panel { Dock = DockStyle.Left, Width = 350, BackColor = Color.White, Padding = new Padding(20), AutoScroll = true };
         this.Controls.Add(panelFormulario);
 
-        // Título
-        var lblTitulo = new Label { Text = "Nueva Empresa", Dock = DockStyle.Top, Height = 40, Font = new Font("Segoe UI", 14, FontStyle.Bold), ForeColor = ThemeHelper.PrimaryColor };
+        var lblTitulo = new Label { Text = "Empresa", Dock = DockStyle.Top, Height = 40, Font = new Font("Segoe UI", 14, FontStyle.Bold), ForeColor = ThemeHelper.PrimaryColor };
         panelFormulario.Controls.Add(lblTitulo);
 
-        // Campos (Orden inverso para Dock=Top)
-        // Nota: Los agregamos usando un método auxiliar para limpiar el código
+        // Inputs
         CrearCampoInput("Municipio:", out cmbMunicipios);
         CrearCampoInput("Email:", out txtEmail);
         CrearCampoInput("Teléfono:", out txtTel);
@@ -58,7 +49,12 @@ public class FrmEmpresas : Form
         ThemeHelper.EstilizarBoton(btnGuardar);
         btnGuardar.Click += async (s, e) => await Guardar();
 
-        panelFormulario.Controls.Add(new Panel { Height = 20, Dock = DockStyle.Top }); // Espacio
+        var btnCancelar = new Button { Text = "Cancelar Edición", Height = 30, Dock = DockStyle.Top, FlatStyle = FlatStyle.Flat, ForeColor = Color.Gray };
+        btnCancelar.Click += (s, e) => Limpiar();
+
+        panelFormulario.Controls.Add(new Panel { Height = 20, Dock = DockStyle.Top });
+        panelFormulario.Controls.Add(btnCancelar);
+        panelFormulario.Controls.Add(new Panel { Height = 10, Dock = DockStyle.Top });
         panelFormulario.Controls.Add(btnGuardar);
 
         var btnEliminar = new Button { Text = "Eliminar", Height = 45, Dock = DockStyle.Bottom };
@@ -66,76 +62,83 @@ public class FrmEmpresas : Form
         btnEliminar.Click += async (s, e) => await Eliminar();
         panelFormulario.Controls.Add(btnEliminar);
 
-        // --- 2. Grilla (Derecha) ---
-        dgvDatos = new DataGridView();
-        dgvDatos.Dock = DockStyle.Fill;
+        dgvDatos = new DataGridView { Dock = DockStyle.Fill };
         ThemeHelper.EstilizarGrid(dgvDatos);
+        dgvDatos.Click += (s, e) => SeleccionarFila();
         this.Controls.Add(dgvDatos);
         dgvDatos.BringToFront();
 
-        // Carga inicial
         await CargarCombos();
         await CargarDatos();
     }
 
-    private void CrearCampoInput(string labelText, out TextBox textBox)
-    {
-        var panelItem = new Panel { Height = 65, Dock = DockStyle.Top, Padding = new Padding(0, 5, 0, 5) };
-        var lbl = new Label { Text = labelText, Dock = DockStyle.Top, Height = 20, Font = new Font("Segoe UI", 9, FontStyle.Bold), ForeColor = Color.Gray };
-        textBox = new TextBox { Dock = DockStyle.Top, Height = 30, Font = new Font("Segoe UI", 10), BorderStyle = BorderStyle.FixedSingle };
-        
-        panelItem.Controls.Add(textBox);
-        panelItem.Controls.Add(lbl);
-        lbl.BringToFront(); // Label arriba
-
-        panelFormulario.Controls.Add(panelItem);
-        panelItem.BringToFront(); // Mantiene el orden visual correcto
+    // Helpers CrearCampoInput iguales a los anteriores...
+    private void CrearCampoInput(string label, out TextBox txt) { 
+        var p = new Panel { Height = 65, Dock = DockStyle.Top, Padding = new Padding(0,5,0,5) };
+        var l = new Label { Text = label, Dock = DockStyle.Top, Height = 20, Font = new Font("Segoe UI", 9, FontStyle.Bold), ForeColor = Color.Gray };
+        txt = new TextBox { Dock = DockStyle.Top, Height = 30, Font = new Font("Segoe UI", 10), BorderStyle = BorderStyle.FixedSingle };
+        p.Controls.Add(txt); p.Controls.Add(l); l.BringToFront();
+        panelFormulario.Controls.Add(p); p.BringToFront();
+    }
+    private void CrearCampoInput(string label, out ComboBox cmb) { 
+        var p = new Panel { Height = 65, Dock = DockStyle.Top, Padding = new Padding(0,5,0,5) };
+        var l = new Label { Text = label, Dock = DockStyle.Top, Height = 20, Font = new Font("Segoe UI", 9, FontStyle.Bold), ForeColor = Color.Gray };
+        cmb = new ComboBox { Dock = DockStyle.Top, Height = 30, Font = new Font("Segoe UI", 10), DropDownStyle = ComboBoxStyle.DropDownList, FlatStyle = FlatStyle.Flat };
+        p.Controls.Add(cmb); p.Controls.Add(l); l.BringToFront();
+        panelFormulario.Controls.Add(p); p.BringToFront();
     }
 
-    private void CrearCampoInput(string labelText, out ComboBox comboBox)
-    {
-        var panelItem = new Panel { Height = 65, Dock = DockStyle.Top, Padding = new Padding(0, 5, 0, 5) };
-        var lbl = new Label { Text = labelText, Dock = DockStyle.Top, Height = 20, Font = new Font("Segoe UI", 9, FontStyle.Bold), ForeColor = Color.Gray };
-        comboBox = new ComboBox { Dock = DockStyle.Top, Height = 30, Font = new Font("Segoe UI", 10), DropDownStyle = ComboBoxStyle.DropDownList, FlatStyle = FlatStyle.Flat };
-        
-        panelItem.Controls.Add(comboBox);
-        panelItem.Controls.Add(lbl);
-        lbl.BringToFront();
-
-        panelFormulario.Controls.Add(panelItem);
-        panelItem.BringToFront();
-    }
-
-    private async Task CargarCombos()
-    {
+    private async Task CargarCombos() {
         var lista = await _muniService.ObtenerTodosAsync();
-        cmbMunicipios.DataSource = lista;
-        cmbMunicipios.DisplayMember = "Nombre";
-        cmbMunicipios.ValueMember = "Id";
+        cmbMunicipios.DataSource = lista; cmbMunicipios.DisplayMember = "Nombre"; cmbMunicipios.ValueMember = "Id";
     }
-
     private async Task CargarDatos() => dgvDatos.DataSource = await _service.ObtenerTodosAsync();
 
-    private async Task Guardar()
-    {
+    private async Task Guardar() {
         if (cmbMunicipios.SelectedValue == null) return;
         try {
-            var dto = new EmpresaCreateDto(txtNit.Text, txtRazon.Text, txtComercial.Text, txtTel.Text, txtEmail.Text, (Guid)cmbMunicipios.SelectedValue);
-            await _service.CrearAsync(dto);
-            await CargarDatos();
-            MessageBox.Show("Empresa Guardada");
+            if (_idSeleccionado == null) {
+                var dto = new EmpresaCreateDto(txtNit.Text, txtRazon.Text, txtComercial.Text, txtTel.Text, txtEmail.Text, (Guid)cmbMunicipios.SelectedValue);
+                await _service.CrearAsync(dto);
+                MessageBox.Show("Guardado");
+            } else {
+                var dto = new EmpresaUpdateDto(_idSeleccionado.Value, txtNit.Text, txtRazon.Text, txtComercial.Text, txtTel.Text, txtEmail.Text, (Guid)cmbMunicipios.SelectedValue);
+                await _service.ActualizarAsync(dto);
+                MessageBox.Show("Actualizado");
+            }
             Limpiar();
+            await CargarDatos();
         } catch (Exception ex) { MessageBox.Show(ex.Message); }
     }
 
-    private async Task Eliminar()
-    {
+    private void SeleccionarFila() {
+        if (dgvDatos.SelectedRows.Count > 0) {
+            var row = dgvDatos.SelectedRows[0];
+            _idSeleccionado = (Guid)row.Cells["Id"].Value;
+            
+            txtNit.Text = row.Cells["Nit"].Value?.ToString();
+            txtRazon.Text = row.Cells["RazonSocial"].Value?.ToString();
+            txtComercial.Text = row.Cells["NombreComercial"].Value?.ToString();
+            txtTel.Text = row.Cells["Telefono"].Value?.ToString();
+            txtEmail.Text = row.Cells["CorreoElectronico"].Value?.ToString();
+
+            if(row.Cells["MunicipioId"].Value != null) 
+                cmbMunicipios.SelectedValue = row.Cells["MunicipioId"].Value;
+        }
+    }
+
+    private async Task Eliminar() { /* Igual que antes con Limpiar() */ 
         if (dgvDatos.SelectedRows.Count == 0) return;
-        if(MessageBox.Show("¿Eliminar empresa?", "Confirmar", MessageBoxButtons.YesNo) == DialogResult.Yes) {
+        if(MessageBox.Show("¿Eliminar?", "Confirmar", MessageBoxButtons.YesNo) == DialogResult.Yes) {
             await _service.EliminarAsync((Guid)dgvDatos.SelectedRows[0].Cells["Id"].Value);
+            Limpiar();
             await CargarDatos();
         }
     }
 
-    private void Limpiar() { txtNit.Clear(); txtRazon.Clear(); txtComercial.Clear(); txtTel.Clear(); txtEmail.Clear(); }
+    private void Limpiar() { 
+        txtNit.Clear(); txtRazon.Clear(); txtComercial.Clear(); txtTel.Clear(); txtEmail.Clear(); 
+        cmbMunicipios.SelectedIndex = -1;
+        _idSeleccionado = null; 
+    }
 }

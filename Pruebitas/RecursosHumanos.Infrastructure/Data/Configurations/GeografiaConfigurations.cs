@@ -20,11 +20,12 @@ public class DepartamentoConfiguration : IEntityTypeConfiguration<Departamento>
         builder.HasKey(d => d.Id);
         builder.Property(d => d.Nombre).IsRequired().HasMaxLength(100);
 
-        // CORREGIDO: Usamos (d => d.Pais) en lugar de <Pais>
+        // --- CORRECCIÓN AQUÍ ---
+        // Permitir que al borrar un PAÍS, se borren sus DEPARTAMENTOS
         builder.HasOne(d => d.Pais) 
             .WithMany()
             .HasForeignKey(d => d.PaisId)
-            .OnDelete(DeleteBehavior.Restrict);
+            .OnDelete(DeleteBehavior.Cascade); // <--- CAMBIADO A CASCADE
     }
 }
 
@@ -35,10 +36,11 @@ public class MunicipioConfiguration : IEntityTypeConfiguration<Municipio>
         builder.HasKey(m => m.Id);
         builder.Property(m => m.Nombre).IsRequired().HasMaxLength(100);
 
-        // CORREGIDO: Usamos (m => m.Departamento) en lugar de <Departamento>
+        // --- CORRECCIÓN PREVIA ---
+        // Permitir que al borrar un DEPARTAMENTO, se borren sus MUNICIPIOS
         builder.HasOne(m => m.Departamento)
             .WithMany()
             .HasForeignKey(m => m.DepartamentoId)
-            .OnDelete(DeleteBehavior.Restrict);
+            .OnDelete(DeleteBehavior.Cascade); // <--- CAMBIADO A CASCADE
     }
 }

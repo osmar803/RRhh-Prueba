@@ -2,6 +2,7 @@ using System.Drawing;
 using System.Windows.Forms;
 using RecursosHumanos.Application.DTOs;
 using RecursosHumanos.Application.Services;
+using RecursosHumanos.WinForms.Helpers;
 
 namespace RecursosHumanos.WinForms;
 
@@ -10,125 +11,134 @@ public class FrmDepartamentos : Form
     private readonly DepartamentoService _service;
     private readonly PaisService _paisService;
     
+    // Estado
+    private Guid? _idSeleccionado = null;
+
+    // Controles
     private ComboBox cmbPaises;
     private TextBox txtNombre;
     private DataGridView dgvDatos;
+    private Panel panelFormulario;
 
     public FrmDepartamentos(DepartamentoService service, PaisService paisService)
     {
         _service = service;
         _paisService = paisService;
-        
-        // 1. Dibujamos los controles primero
-        InitializeComponentManual(); 
-        
-        // 2. Nos suscribimos al evento Load para cargar datos de forma segura
-        this.Load += async (s, e) => await CargarDatosIniciales();
+        ConfigurarUI();
+        this.Load += async (s,e) => await CargarDatosIniciales();
     }
 
-    private void InitializeComponentManual()
+    private void ConfigurarUI()
     {
         this.Text = "Gestión de Departamentos";
-        this.Size = new Size(600, 450);
-        this.StartPosition = FormStartPosition.CenterScreen;
+        this.Size = new Size(950, 550);
+        this.BackColor = ThemeHelper.BackgroundColor;
 
-        var lblPais = new Label { Text = "Seleccione País:", Location = new Point(20, 20), AutoSize = true };
-        cmbPaises = new ComboBox { Location = new Point(20, 45), Width = 200, DropDownStyle = ComboBoxStyle.DropDownList };
-        
-        var lblNom = new Label { Text = "Nombre Depto:", Location = new Point(240, 20), AutoSize = true };
-        txtNombre = new TextBox { Location = new Point(240, 45), Width = 200 };
+        // Panel Izquierdo
+        panelFormulario = new Panel { Dock = DockStyle.Left, Width = 300, BackColor = Color.White, Padding = new Padding(20) };
+        this.Controls.Add(panelFormulario);
 
-        var btnGuardar = new Button { Text = "Guardar", Location = new Point(460, 43), Width = 100 };
-        // Validamos antes de llamar a guardar
-        btnGuardar.Click += async (s, e) => {
-            if (ValidarFormulario()) await Guardar();
-        };
+        var lblTitulo = new Label { Text = "Departamento", Dock = DockStyle.Top, Height = 40, Font = new Font("Segoe UI", 12, FontStyle.Bold), ForeColor = ThemeHelper.PrimaryColor };
+        panelFormulario.Controls.Add(lblTitulo);
 
-        var btnEliminar = new Button { Text = "Eliminar", Location = new Point(460, 75), Width = 100 };
+        CrearCampoInput("Nombre Depto:", out txtNombre);
+        CrearCampoInput("País:", out cmbPaises);
+
+        // Botones
+        var btnGuardar = new Button { Text = "Guardar", Height = 45, Dock = DockStyle.Top };
+        ThemeHelper.EstilizarBoton(btnGuardar);
+        btnGuardar.Click += async (s, e) => await Guardar();
+
+        var btnCancelar = new Button { Text = "Cancelar Edición", Height = 30, Dock = DockStyle.Top, FlatStyle = FlatStyle.Flat, ForeColor = Color.Gray };
+        btnCancelar.Click += (s, e) => Limpiar(); // Resetear edición
+
+        panelFormulario.Controls.Add(new Panel { Height = 10, Dock = DockStyle.Top });
+        panelFormulario.Controls.Add(btnCancelar);
+        panelFormulario.Controls.Add(new Panel { Height = 10, Dock = DockStyle.Top });
+        panelFormulario.Controls.Add(btnGuardar);
+
+        var btnEliminar = new Button { Text = "Eliminar", Height = 45, Dock = DockStyle.Bottom };
+        ThemeHelper.EstilizarBoton(btnEliminar, esPeligroso: true);
         btnEliminar.Click += async (s, e) => await Eliminar();
+        panelFormulario.Controls.Add(btnEliminar);
 
-        dgvDatos = new DataGridView { Location = new Point(20, 110), Size = new Size(540, 280), ReadOnly = true, SelectionMode = DataGridViewSelectionMode.FullRowSelect };
-
-        this.Controls.Add(lblPais); this.Controls.Add(cmbPaises);
-        this.Controls.Add(lblNom); this.Controls.Add(txtNombre);
-        this.Controls.Add(btnGuardar); this.Controls.Add(btnEliminar);
+        // Grilla
+        dgvDatos = new DataGridView { Dock = DockStyle.Fill };
+        ThemeHelper.EstilizarGrid(dgvDatos);
+        dgvDatos.Click += (s, e) => SeleccionarFila(); // <--- EVENTO IMPORTANTE
+        
         this.Controls.Add(dgvDatos);
+        dgvDatos.BringToFront();
     }
 
-    private async Task CargarDatosIniciales()
-    {
-        try 
-        {
-            // 1. Cargar Países
-            var paises = await _paisService.ObtenerTodosAsync();
-            if (paises != null && paises.Count > 0)
+    private void CrearCampoInput(string label, out TextBox txt) { /* Igual que antes */
+        var p = new Panel { Height = 60, Dock = DockStyle.Top, Padding = new Padding(0,5,0,5) };
+        var l = new Label { Text = label, Dock = DockStyle.Top, Height = 20, Font = new Font("Segoe UI", 9) };
+        txt = new TextBox { Dock = DockStyle.Top, Height = 30, Font = new Font("Segoe UI", 10), BorderStyle = BorderStyle.FixedSingle };
+        p.Controls.Add(txt); p.Controls.Add(l); l.BringToFront();
+        panelFormulario.Controls.Add(p); p.BringToFront();
+    }
+    private void CrearCampoInput(string label, out ComboBox cmb) { /* Igual que antes */
+        var p = new Panel { Height = 60, Dock = DockStyle.Top, Padding = new Padding(0,5,0,5) };
+        var l = new Label { Text = label, Dock = DockStyle.Top, Height = 20, Font = new Font("Segoe UI", 9) };
+        cmb = new ComboBox { Dock = DockStyle.Top, Height = 30, Font = new Font("Segoe UI", 10), DropDownStyle = ComboBoxStyle.DropDownList, FlatStyle = FlatStyle.Flat };
+        p.Controls.Add(cmb); p.Controls.Add(l); l.BringToFront();
+        panelFormulario.Controls.Add(p); p.BringToFront();
+    }
+
+    private async Task CargarDatosIniciales() {
+        var paises = await _paisService.ObtenerTodosAsync();
+        cmbPaises.DataSource = paises; cmbPaises.DisplayMember = "Nombre"; cmbPaises.ValueMember = "Id";
+        await RecargarGrilla();
+    }
+    private async Task RecargarGrilla() => dgvDatos.DataSource = await _service.ObtenerTodosAsync();
+
+    private async Task Guardar() {
+        if (cmbPaises.SelectedValue == null || string.IsNullOrWhiteSpace(txtNombre.Text)) return;
+        try {
+            if (_idSeleccionado == null)
             {
-                cmbPaises.DataSource = paises;
-                cmbPaises.DisplayMember = "Nombre";
-                cmbPaises.ValueMember = "Id";
-                cmbPaises.SelectedIndex = 0;
+                // MODO CREAR
+                await _service.CrearAsync(new DepartamentoCreateDto(txtNombre.Text, (Guid)cmbPaises.SelectedValue));
+                MessageBox.Show("Creado correctamente");
             }
             else
             {
-                MessageBox.Show("No hay países registrados. Primero agregue un país.");
-                this.Close(); // Cerramos si no se puede usar
-                return;
+                // MODO ACTUALIZAR
+                var dto = new DepartamentoUpdateDto(_idSeleccionado.Value, txtNombre.Text, (Guid)cmbPaises.SelectedValue);
+                await _service.ActualizarAsync(dto);
+                MessageBox.Show("Actualizado correctamente");
             }
-
-            // 2. Cargar Grilla
-            await RecargarGrilla();
-        }
-        catch (Exception ex)
-        {
-            MessageBox.Show($"Error al cargar datos: {ex.Message}");
-        }
-    }
-
-    private async Task RecargarGrilla()
-    {
-        var lista = await _service.ObtenerTodosAsync();
-        dgvDatos.DataSource = lista;
-    }
-
-    private bool ValidarFormulario()
-    {
-        if (cmbPaises.SelectedValue == null)
-        {
-            MessageBox.Show("Error: No se ha seleccionado ningún país.");
-            return false;
-        }
-        if (string.IsNullOrWhiteSpace(txtNombre.Text))
-        {
-            MessageBox.Show("El nombre es obligatorio.");
-            return false;
-        }
-        return true;
-    }
-
-    private async Task Guardar()
-    {
-        try 
-        {
-            var nuevoDto = new DepartamentoCreateDto(txtNombre.Text, (Guid)cmbPaises.SelectedValue);
-            await _service.CrearAsync(nuevoDto);
-            
-            MessageBox.Show("Departamento guardado correctamente.");
-            txtNombre.Text = "";
-            await RecargarGrilla();
-        } 
-        catch (Exception ex) 
-        { 
-            MessageBox.Show($"Error al guardar: {ex.Message}"); 
-        }
-    }
-
-    private async Task Eliminar()
-    {
-        if (dgvDatos.SelectedRows.Count == 0) return;
-        try {
-            var id = (Guid)dgvDatos.SelectedRows[0].Cells["Id"].Value;
-            await _service.EliminarAsync(id);
+            Limpiar();
             await RecargarGrilla();
         } catch (Exception ex) { MessageBox.Show(ex.Message); }
+    }
+
+    private void SeleccionarFila() {
+        if (dgvDatos.SelectedRows.Count > 0) {
+            var row = dgvDatos.SelectedRows[0];
+            _idSeleccionado = (Guid)row.Cells["Id"].Value;
+            txtNombre.Text = row.Cells["Nombre"].Value.ToString();
+            
+            // Seleccionar el combo (asumiendo que traes PaisId en el DTO, si no, traes PaisNombre)
+            if(row.Cells["PaisId"].Value != null) 
+                cmbPaises.SelectedValue = row.Cells["PaisId"].Value;
+        }
+    }
+
+    private async Task Eliminar() {
+        if (dgvDatos.SelectedRows.Count == 0) return;
+        if(MessageBox.Show("¿Eliminar?", "Confirme", MessageBoxButtons.YesNo) == DialogResult.Yes){
+            await _service.EliminarAsync((Guid)dgvDatos.SelectedRows[0].Cells["Id"].Value);
+            Limpiar();
+            await RecargarGrilla();
+        }
+    }
+
+    private void Limpiar() {
+        txtNombre.Text = "";
+        cmbPaises.SelectedIndex = -1;
+        _idSeleccionado = null;
+        dgvDatos.ClearSelection();
     }
 }
